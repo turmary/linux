@@ -19,6 +19,12 @@
 #define STM32_SMC_WRITE_SHADOW		0x03
 #define STM32_SMC_READ_OTP		0x04
 
+/* shadow registers offest */
+#define STM32MP15_BSEC_DATA0		0x200
+
+/* 32 (x 32-bits) lower shadow registers */
+#define STM32MP15_BSEC_NUM_LOWER	32
+
 struct stm32_romem_cfg {
 	int size;
 };
@@ -77,13 +83,21 @@ static int stm32_bsec_read(void *context, unsigned int offset, void *buf,
 		return -EINVAL;
 
 	for (i = roffset; (i < roffset + rbytes); i += 4) {
-		ret = stm32_bsec_smc(STM32_SMC_READ_OTP, i >> 2, 0, &val);
-		if (ret) {
-			dev_err(priv->dev, "Failed to read data%d (%d)\n",
-				i >> 2, ret);
-			return ret;
-		}
+		u32 otp = i >> 2;
 
+		if (otp < STM32MP15_BSEC_NUM_LOWER) {
+			/* read lower data from shadow registers */
+			val = readl_relaxed(
+				priv->base + STM32MP15_BSEC_DATA0 + i);
+		} else {
+			ret = stm32_bsec_smc(STM32_SMC_READ_SHADOW, otp, 0,
+					     &val);
+			if (ret) {
+				dev_err(priv->dev, "Can't read data%d (%d)\n",
+					otp, ret);
+				return ret;
+			}
+		}
 		/* skip first bytes in case of unaligned read */
 		if (skip_bytes)
 			size = min(bytes, (size_t)(4 - skip_bytes));
@@ -127,7 +141,6 @@ static int stm32_romem_probe(struct platform_device *pdev)
 	const struct stm32_romem_cfg *cfg;
 	struct device *dev = &pdev->dev;
 	struct stm32_romem_priv *priv;
-	struct nvmem_device *nvmem;
 	struct resource *res;
 
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
@@ -154,26 +167,12 @@ static int stm32_romem_probe(struct platform_device *pdev)
 		priv->cfg.size = resource_size(res);
 		priv->cfg.reg_read = stm32_romem_read;
 	} else {
-		priv->cfg.read_only = false;
 		priv->cfg.size = cfg->size;
 		priv->cfg.reg_read = stm32_bsec_read;
 		priv->cfg.reg_write = stm32_bsec_write;
 	}
 
-	nvmem = nvmem_register(&priv->cfg);
-	if (IS_ERR(nvmem))
-		return PTR_ERR(nvmem);
-
-	platform_set_drvdata(pdev, nvmem);
-
-	return 0;
-}
-
-static int stm32_romem_remove(struct platform_device *pdev)
-{
-	struct nvmem_device *nvmem = platform_get_drvdata(pdev);
-
-	return nvmem_unregister(nvmem);
+	return PTR_ERR_OR_ZERO(devm_nvmem_register(dev, &priv->cfg));
 }
 
 static const struct stm32_romem_cfg stm32mp15_bsec_cfg = {
@@ -191,7 +190,6 @@ MODULE_DEVICE_TABLE(of, stm32_romem_of_match);
 
 static struct platform_driver stm32_romem_driver = {
 	.probe = stm32_romem_probe,
-	.remove = stm32_romem_remove,
 	.driver = {
 		.name = "stm32-romem",
 		.of_match_table = of_match_ptr(stm32_romem_of_match),
