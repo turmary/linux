@@ -131,6 +131,12 @@
 /* Control register extensions in the Qualcomm versions */
 #define MCI_DPSM_QCOM_DATA_PEND	BIT(17)
 #define MCI_DPSM_QCOM_RX_DATA_PEND BIT(20)
+/* Control register extensions in STM32 versions */
+#define MCI_DPSM_STM32_MODE_BLOCK	(0 << 2)
+#define MCI_DPSM_STM32_MODE_SDIO	(1 << 2)
+#define MCI_DPSM_STM32_MODE_STREAM	(2 << 2)
+#define MCI_DPSM_STM32_MODE_BLOCK_STOP	(3 << 2)
+#define MCI_DPSM_STM32_SDIOEN	BIT(11)
 
 #define MMCIDATACNT		0x030
 #define MMCISTATUS		0x034
@@ -273,7 +279,6 @@ struct mmci_host;
  * @fifohalfsize: number of bytes that can be written when MCI_TXFIFOHALFEMPTY
  *		  is asserted (likewise for RX)
  * @data_cmd_enable: enable value for data commands.
- * @st_sdio: enable ST specific SDIO logic
  * @st_clkdiv: true if using a ST-specific clock divider algorithm
  * @stm32_clkdiv: true if using a STM32-specific clock divider algorithm
  * @datactrl_mask_ddrmode: ddr mode mask in datactrl register.
@@ -309,6 +314,7 @@ struct mmci_host;
  * @opendrain: bitmask identifying the OPENDRAIN bit inside MMCIPOWER register
  * @dma_lli: true if variant has dma link list feature.
  * @stm32_idmabsize_mask: stm32 sdmmc idma buffer size.
+ * @quirks: A bitmap of hardware quirks that require some special action.
  */
 struct variant_data {
 	unsigned int		clkreg;
@@ -330,7 +336,6 @@ struct variant_data {
 	unsigned int		datactrl_dpsm_enable;
 	u8			datactrl_first:1;
 	u8			datacnt_useless:1;
-	u8			st_sdio:1;
 	u8			st_clkdiv:1;
 	u8			stm32_clkdiv:1;
 	u8			blksz_datactrl16:1;
@@ -355,8 +360,12 @@ struct variant_data {
 	u32			opendrain;
 	u8			dma_lli:1;
 	u32			stm32_idmabsize_mask;
+	u32			quirks;
 	void (*init)(struct mmci_host *host);
 };
+
+#define MMCI_QUIRK_STM32_DTMODE	BIT(0)
+#define MMCI_QUIRK_ST_SDIO	BIT(2) /* enable ST specific SDIO logic */
 
 /* mmci variant callbacks */
 struct mmci_host_ops {
