@@ -33,6 +33,11 @@
 			reg = <0x10040000 0x10000>;
 			no-map;
 		};
+
+		gpu_reserved: gpu@f8000000 {
+			reg = <0xf8000000 0x8000000>;
+			no-map;
+		};
 	};
 
 	aliases {
@@ -70,6 +75,8 @@
 
 &adc {
 	/* ANA0, ANA1 are dedicated pins and don't need pinctrl: only in6. */
+	vdd-supply = <&vdd>;
+	vdda-supply = <&vdda>;
 	vref-supply = <&vdda>;
 	status = "okay";
 	adc1: adc@0 {
@@ -114,6 +121,15 @@
 	sram = <&dma_pool>;
 };
 
+&gpu {
+	contiguous-area = <&gpu_reserved>;
+	status = "okay";
+};
+
+&hsem {
+	status = "okay";
+};
+
 &i2c4 {
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&i2c4_pins_a>;
@@ -127,8 +143,7 @@
 	pmic: stpmic@33 {
 		compatible = "st,stpmic1";
 		reg = <0x33>;
-		interrupts-extended = <&pwr 0 IRQ_TYPE_EDGE_FALLING 1>,
-				      <&exti 55 1>;
+		interrupts-extended = <&exti_pwr 55 IRQ_TYPE_EDGE_FALLING>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
 		status = "okay";
@@ -235,10 +250,10 @@
 				regulator-over-current-protection;
 			};
 
-			 bst_out: boost {
+			bst_out: boost {
 				regulator-name = "bst_out";
 				interrupts = <IT_OCP_BOOST 0>;
-			 };
+			};
 
 			vbus_otg: pwr_sw1 {
 				regulator-name = "vbus_otg";
@@ -278,12 +293,16 @@
 &m4_rproc {
 	memory-region = <&ipc_share>;
 	mboxes = <&ipcc 0>, <&ipcc 1>, <&ipcc 2>;
-	mbox-names = "vq0", "vq1", "init_shdn";
+	mbox-names = "vq0", "vq1", "shutdown";
 	interrupt-parent = <&exti>;
 	interrupts = <68 1>;
 	interrupt-names = "wdg";
 	recovery;
 	status = "okay";
+};
+
+&pwr {
+	pwr-supply = <&vdd>;
 };
 
 &rng1 {
@@ -316,7 +335,7 @@
 	non-removable;
 	no-sd;
 	no-sdio;
-	st,negedge;
+	st,neg-edge;
 	bus-width = <8>;
 	vmmc-supply = <&v3v3>;
 	vqmmc-supply = <&v3v3>;
@@ -342,14 +361,10 @@
 	status = "okay";
 };
 
-&usbphyc_port0 {
-	phy-supply = <&vdd_usb>;
-	vdda1v1-supply = <&reg11>;
-	vdda1v8-supply = <&reg18>;
+&usbotg_hs {
+	vbus-supply = <&vbus_otg>;
 };
 
-&usbphyc_port1 {
-	phy-supply = <&vdd_usb>;
-	vdda1v1-supply = <&reg11>;
-	vdda1v8-supply = <&reg18>;
+&usbphyc {
+	vdd3v3-supply = <&vdd_usb>;
 };
