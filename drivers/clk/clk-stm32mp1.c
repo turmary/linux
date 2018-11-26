@@ -52,6 +52,7 @@ static DEFINE_SPINLOCK(rlock);
 #define RCC_AHB5ENSETR		0x210
 #define RCC_AHB6ENSETR		0x218
 #define RCC_AHB6LPENSETR	0x318
+#define RCC_MLAHBENSETR		0xA38
 #define RCC_RCK12SELR		0x28
 #define RCC_RCK3SELR		0x820
 #define RCC_RCK4SELR		0x824
@@ -2672,8 +2673,6 @@ CLK_OF_DECLARE_DRIVER(stm32mp1_rcc, "st,stm32mp1-rcc", stm32mp1_rcc_init);
  *
  */
 
-static struct regmap *pwr_syscon;
-
 struct reg {
 	u32 address;
 	u32 val;
@@ -2697,24 +2696,31 @@ struct sreg {
 	u32 address;
 	u32 secured;
 	u32 val;
+	u8 setclr;
 };
 
+#define SREG(_addr, _setclr, _sec) { \
+	.address = _addr,\
+	.setclr = _setclr,\
+	.secured = _sec,\
+	.val = 0,\
+}
+
 static struct sreg clock_gating[] = {
-	{ 0xA00, 0 }, /* APB1 */
-	{ 0xA08, 0 }, /* APB2 */
-	{ 0xA10, 0 }, /* APB3 */
-	{ 0x200, 0 }, /* APB4 */
-	{ 0x208, 1 }, /* APB5 */
-	{ 0x210, 1 }, /* AHB5 */
-	{ 0x218, 0 }, /* AHB6 */
-	{ 0xA18, 0 }, /* AHB2 */
-	{ 0xA20, 0 }, /* AHB3 */
-	{ 0xA28, 0 }, /* AHB4 */
-	{ 0xA38, 0 }, /* MLAHB */
-	{ 0x800, 0 }, /* MCO1 */
-	{ 0x804, 0 }, /* MCO2 */
-	{ 0x894, 0 }, /* PLL4 */
-	{ 0x89C, 0 }, /* PLL4CFGR2 */
+	SREG(RCC_APB1ENSETR, 1, 0),
+	SREG(RCC_APB2ENSETR, 1, 0),
+	SREG(RCC_APB3ENSETR, 1, 0),
+	SREG(RCC_APB4ENSETR, 1, 0),
+	SREG(RCC_APB5ENSETR, 1, 1),
+	SREG(RCC_AHB5ENSETR, 1, 1),
+	SREG(RCC_AHB6ENSETR, 1, 0),
+	SREG(RCC_AHB2ENSETR, 1, 0),
+	SREG(RCC_AHB3ENSETR, 1, 0),
+	SREG(RCC_AHB4ENSETR, 1, 0),
+	SREG(RCC_MLAHBENSETR, 1, 0),
+	SREG(RCC_MCO1CFGR, 0, 0),
+	SREG(RCC_MCO2CFGR, 0, 0),
+	SREG(RCC_PLL4CFGR2, 0, 0),
 };
 
 struct smux {
@@ -2767,12 +2773,13 @@ struct smux _mux_kernel[] = {
 };
 
 static struct sreg pll_clock[] = {
-	{ 0x880, 0 }, /* PLL3 */
-	{ 0x894, 0 }, /* PLL4 */
+	SREG(RCC_PLL3CR, 0, 0),
+	SREG(RCC_PLL4CR, 0, 0),
 };
 
 static struct sreg mcu_source[] = {
-	{ 0x048, 0 }, /* MSSCKSELR */
+	SREG(RCC_MCUDIVR, 0, 0),
+	SREG(RCC_MSSCKSELR, 0, 0),
 };
 
 #define RCC_IRQ_FLAGS_MASK	0x110F1F
@@ -2783,9 +2790,6 @@ static struct sreg mcu_source[] = {
 #define STOP_FLAG	(BIT(5))
 #define SBF		(BIT(11))
 #define SBF_MPU		(BIT(12))
-
-
-
 
 static irqreturn_t stm32mp1_rcc_irq_handler(int irq, void *sdata)
 {
@@ -2808,7 +2812,7 @@ static void stm32mp1_backup_sreg(struct sreg *sreg, int size)
 static void stm32mp1_restore_sreg(struct sreg *sreg, int size)
 {
 	int i;
-	u32 val, address;
+	u32 val, address, reg;
 	int soc_secured;
 
 	soc_secured = _is_soc_secured(rcc_base);
@@ -2817,11 +2821,21 @@ static void stm32mp1_restore_sreg(struct sreg *sreg, int size)
 		val = sreg[i].val;
 		address =  sreg[i].address;
 
-		if (soc_secured && sreg[i].secured)
-			SMC(STM32_SVC_RCC, STM32_WRITE,
-			    address, val);
-		else
+		reg = readl_relaxed(rcc_base + address);
+		if (reg == val)
+			continue;
+
+		if (soc_secured && sreg[i].secured) {
+			SMC(STM32_SVC_RCC, STM32_WRITE, address, val);
+			if (sreg[i].setclr)
+				SMC(STM32_SVC_RCC, STM32_WRITE,
+				    address + RCC_CLR, ~val);
+		} else {
 			writel_relaxed(val, rcc_base + address);
+			if (sreg[i].setclr)
+				writel_relaxed(~val,
+					       rcc_base + address + RCC_CLR);
+		}
 	}
 }
 
@@ -2893,31 +2907,23 @@ static int stm32mp1_clk_suspend(void)
 	reg = readl_relaxed(rcc_base + RCC_OCENSETR) & RCC_CK_OSC_MASK;
 	writel_relaxed(reg << 1, rcc_base + RCC_OCENSETR);
 
+	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_RSTSR, 0);
+
 	return 0;
 }
 
 static void stm32mp1_clk_resume(void)
 {
-	u32 power_flags_rcc, power_flags_pwr;
 
-	/* Read power flags and decide what to resume */
-	regmap_read(pwr_syscon, PWR_MPUCR, &power_flags_pwr);
-	power_flags_rcc = readl_relaxed(rcc_base + RCC_RSTSR);
+	/* Restore pll  */
+	stm32mp1_restore_pll(pll_clock, ARRAY_SIZE(pll_clock));
 
-	if ((power_flags_pwr & STOP_FLAG) == STOP_FLAG) {
-		/* Restore pll  */
-		stm32mp1_restore_pll(pll_clock, ARRAY_SIZE(pll_clock));
+	/* Restore mcu source */
+	stm32mp1_restore_sreg(mcu_source, ARRAY_SIZE(mcu_source));
 
-		/* Restore mcu source */
-		stm32mp1_restore_sreg(mcu_source, ARRAY_SIZE(mcu_source));
-	} else if (((power_flags_rcc & SBF) == SBF) ||
-		     ((power_flags_rcc & SBF_MPU) == SBF_MPU)) {
-		stm32mp1_restore_sreg(clock_gating, ARRAY_SIZE(clock_gating));
+	stm32mp1_restore_sreg(clock_gating, ARRAY_SIZE(clock_gating));
 
-		stm32mp1_restore_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
-	}
-
-	SMC(STM32_SVC_RCC, STM32_WRITE, RCC_RSTSR, 0);
+	stm32mp1_restore_mux(_mux_kernel, ARRAY_SIZE(_mux_kernel));
 
 	/* Disable ck_xxx_ker clocks */
 	stm32_clk_bit_secure(STM32_SET_BITS, RCC_CK_XXX_KER_MASK,
@@ -2940,12 +2946,6 @@ static int stm32_rcc_init_pwr(struct device_node *np)
 	int irq;
 	int ret;
 	int i;
-
-	pwr_syscon = syscon_regmap_lookup_by_phandle(np, "st,pwr");
-	if (IS_ERR(pwr_syscon)) {
-		pr_err("%s: pwr syscon required !\n", __func__);
-		return PTR_ERR(pwr_syscon);
-	}
 
 	/* register generic irq */
 	irq = of_irq_get(np, 0);
