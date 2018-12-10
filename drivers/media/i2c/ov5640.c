@@ -2691,8 +2691,7 @@ static int ov5640_s_stream(struct v4l2_subdev *sd, int enable)
 
 	if (sensor->streaming == !enable) {
 		if (enable && sensor->pending_mode_change) {
-			ret = ov5640_set_mode(sensor, sensor->last_mode);
-
+			ret = ov5640_set_mode(sensor);
 			if (ret)
 				goto out;
 		}
