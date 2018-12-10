@@ -170,6 +170,7 @@
 #define MCI_STM32_DPSMACTIVE	BIT(12)
 #define MCI_STM32_BUSYD0	BIT(20)
 #define MCI_STM32_BUSYD0END	BIT(21)
+#define MCI_STM32_VSWEND	BIT(25)
 
 #define MMCICLEAR		0x038
 #define MCI_CMDCRCFAILCLR	(1 << 0)
@@ -364,8 +365,9 @@ struct variant_data {
 	void (*init)(struct mmci_host *host);
 };
 
-#define MMCI_QUIRK_STM32_DTMODE	BIT(0)
-#define MMCI_QUIRK_ST_SDIO	BIT(2) /* enable ST specific SDIO logic */
+#define MMCI_QUIRK_STM32_DTMODE	 BIT(0)
+#define MMCI_QUIRK_ST_SDIO	 BIT(2) /* enable ST specific SDIO logic */
+#define MMCI_QUIRK_STM32_VSWITCH BIT(3)
 
 /* mmci variant callbacks */
 struct mmci_host_ops {
@@ -382,6 +384,7 @@ struct mmci_host_ops {
 	void (*dma_error)(struct mmci_host *host);
 	void (*set_clkreg)(struct mmci_host *host, unsigned int desired);
 	void (*set_pwrreg)(struct mmci_host *host, unsigned int pwr);
+	int (*execute_tuning)(struct mmc_host *mmc, u32 opcode);
 };
 
 struct mmci_host {
@@ -414,6 +417,7 @@ struct mmci_host {
 	struct mmci_platform_data *plat;
 	struct mmci_host_ops	*ops;
 	struct variant_data	*variant;
+	void			*variant_priv;
 	struct pinctrl		*pinctrl;
 	struct pinctrl_state	*pins_default;
 	struct pinctrl_state	*pins_opendrain;

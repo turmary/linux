@@ -14,6 +14,7 @@
 #include <linux/ioport.h>
 #include <linux/device.h>
 #include <linux/io.h>
+#include <linux/iopoll.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -25,6 +26,7 @@
 #include <linux/mmc/pm.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
+#include <linux/mmc/sd.h>
 #include <linux/mmc/slot-gpio.h>
 #include <linux/amba/bus.h>
 #include <linux/clk.h>
@@ -291,7 +293,8 @@ static struct variant_data variant_stm32_sdmmc = {
 	.busy_detect_flag	= MCI_STM32_BUSYD0,
 	.busy_detect_mask	= MCI_STM32_BUSYD0ENDMASK,
 	.init			= sdmmc_variant_init,
-	.quirks			= MMCI_QUIRK_STM32_DTMODE,
+	.quirks			= MMCI_QUIRK_STM32_DTMODE |
+				  MMCI_QUIRK_STM32_VSWITCH,
 };
 
 static struct variant_data variant_stm32_sdmmcv2 = {
@@ -318,7 +321,8 @@ static struct variant_data variant_stm32_sdmmcv2 = {
 	.busy_detect_flag	= MCI_STM32_BUSYD0,
 	.busy_detect_mask	= MCI_STM32_BUSYD0ENDMASK,
 	.init			= sdmmc_variant_init,
-	.quirks			= MMCI_QUIRK_STM32_DTMODE,
+	.quirks			= MMCI_QUIRK_STM32_DTMODE |
+				  MMCI_QUIRK_STM32_VSWITCH,
 };
 
 static struct variant_data variant_qcom = {
@@ -1191,6 +1195,10 @@ mmci_start_command(struct mmci_host *host, struct mmc_command *cmd, u32 c)
 		writel_relaxed(clks, host->base + MMCIDATATIMER);
 	}
 
+	if (host->variant->quirks & MMCI_QUIRK_STM32_VSWITCH &&
+	    cmd->opcode == SD_SWITCH_VOLTAGE)
+		mmci_write_pwrreg(host, host->pwr_reg | MCI_STM32_VSWITCHEN);
+
 	if (/*interrupt*/0)
 		c |= MCI_CPSM_INTERRUPT;
 
@@ -1284,13 +1292,13 @@ mmci_cmd_irq(struct mmci_host *host, struct mmc_command *cmd,
 	     unsigned int status)
 {
 	void __iomem *base = host->base;
-	bool busy_resp = !!(cmd->flags & MMC_RSP_BUSY);
-	bool sbc;
+	bool busy_resp, sbc;
 	u32 err_msk;
 
 	if (!cmd)
 		return;
 
+	busy_resp = !!(cmd->flags & MMC_RSP_BUSY);
 	sbc = (cmd == host->mrq->sbc);
 
 	/*
@@ -1575,10 +1583,13 @@ static irqreturn_t mmci_pio_irq(int irq, void *dev_id)
 static irqreturn_t mmci_irq(int irq, void *dev_id)
 {
 	struct mmci_host *host = dev_id;
+	bool busy_resp;
 	u32 status;
 	int ret = 0;
 
 	spin_lock(&host->lock);
+
+	busy_resp = host->cmd ? !!(host->cmd->flags & MMC_RSP_BUSY) : false;
 
 	do {
 		status = readl(host->base + MMCISTATUS);
@@ -1619,9 +1630,12 @@ static irqreturn_t mmci_irq(int irq, void *dev_id)
 		}
 
 		/*
-		 * Don't poll for busy completion in irq context.
+		 * Don't poll for:
+		 * -busy completion in irq context.
+		 * -cmd without busy response check like cmd11
 		 */
-		if (host->variant->busy_detect && host->busy_status)
+		if (host->variant->busy_detect &&
+		    (!busy_resp || host->busy_status))
 			status &= ~host->variant->busy_detect_flag;
 
 		ret = 1;
@@ -1796,6 +1810,8 @@ static int mmci_get_cd(struct mmc_host *mmc)
 
 static int mmci_sig_volt_switch(struct mmc_host *mmc, struct mmc_ios *ios)
 {
+	struct mmci_host *host = mmc_priv(mmc);
+	unsigned long flags;
 	int ret = 0;
 
 	if (!IS_ERR(mmc->supply.vqmmc)) {
@@ -1808,6 +1824,28 @@ static int mmci_sig_volt_switch(struct mmc_host *mmc, struct mmc_ios *ios)
 		case MMC_SIGNAL_VOLTAGE_180:
 			ret = regulator_set_voltage(mmc->supply.vqmmc,
 						1700000, 1950000);
+
+			if (ret)
+				break;
+
+			if (host->variant->quirks & MMCI_QUIRK_STM32_VSWITCH) {
+				u32 status;
+
+				spin_lock_irqsave(&host->lock, flags);
+
+				mmci_write_pwrreg(host, host->pwr_reg |
+						  MCI_STM32_VSWITCH);
+
+				spin_unlock_irqrestore(&host->lock, flags);
+
+				/* wait voltage switch completion while 10ms */
+				ret = readl_relaxed_poll_timeout(
+						 host->base + MMCISTATUS,
+						 status,
+						 (status & MCI_STM32_VSWEND),
+						 10, 10000);
+			}
+
 			break;
 		case MMC_SIGNAL_VOLTAGE_120:
 			ret = regulator_set_voltage(mmc->supply.vqmmc,
@@ -1822,6 +1860,16 @@ static int mmci_sig_volt_switch(struct mmc_host *mmc, struct mmc_ios *ios)
 	return ret;
 }
 
+static int mmci_execute_tuning(struct mmc_host *mmc, u32 opcode)
+{
+	struct mmci_host *host = mmc_priv(mmc);
+
+	if (host->ops && host->ops->execute_tuning)
+		return host->ops->execute_tuning(mmc, opcode);
+
+	return -EINVAL;
+}
+
 static struct mmc_host_ops mmci_ops = {
 	.request	= mmci_request,
 	.pre_req	= mmci_pre_request,
@@ -1830,6 +1878,7 @@ static struct mmc_host_ops mmci_ops = {
 	.get_ro		= mmc_gpio_get_ro,
 	.get_cd		= mmci_get_cd,
 	.start_signal_voltage_switch = mmci_sig_volt_switch,
+	.execute_tuning = mmci_execute_tuning,
 };
 
 static int mmci_of_parse(struct device_node *np, struct mmc_host *mmc)
