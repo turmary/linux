@@ -156,6 +156,29 @@
 		mask = <0x1>;
 	};
 
+	replicator {
+		/*
+		 * non-configurable replicators don't show up on the
+		 * AMBA bus.  As such no need to add "arm,primecell"
+		 */
+		compatible = "arm,coresight-replicator";
+		clocks = <&rcc CK_TRACE>;
+		clock-names = "apb_pclk";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* replicator output ports */
+			port@0 {
+				reg = <0>;
+				replicator_out_port0: endpoint {
+					remote-endpoint = <&funnel_in_port4>;
+				};
+			};
+		};
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -471,6 +494,7 @@
 			interrupts-extended = <&intc GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>,
 					      <&exti 27 1>;
 			clocks = <&rcc USART2_K>;
+			resets = <&rcc USART2_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
 			status = "disabled";
@@ -483,6 +507,7 @@
 			interrupts-extended = <&intc GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>,
 					      <&exti 28 1>;
 			clocks = <&rcc USART3_K>;
+			resets = <&rcc USART3_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
 			status = "disabled";
@@ -495,6 +520,7 @@
 			interrupts-extended = <&intc GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>,
 					      <&exti 30 1>;
 			clocks = <&rcc UART4_K>;
+			resets = <&rcc UART4_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
 			status = "disabled";
@@ -507,6 +533,7 @@
 			interrupts-extended = <&intc GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>,
 					      <&exti 31 1>;
 			clocks = <&rcc UART5_K>;
+			resets = <&rcc UART5_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
 			status = "disabled";
@@ -629,6 +656,7 @@
 			interrupts-extended = <&intc GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>,
 					      <&exti 32 1>;
 			clocks = <&rcc UART7_K>;
+			resets = <&rcc UART7_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
 			status = "disabled";
@@ -641,6 +669,7 @@
 			interrupts-extended = <&intc GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>,
 					      <&exti 33 1>;
 			clocks = <&rcc UART8_K>;
+			resets = <&rcc UART8_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
 			status = "disabled";
@@ -713,6 +742,7 @@
 			interrupts-extended = <&intc GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
 					      <&exti 29 1>;
 			clocks = <&rcc USART6_K>;
+			resets = <&rcc USART6_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
 			status = "disabled";
@@ -1110,7 +1140,7 @@
 				reg = <0x0>;
 				interrupt-parent = <&adc>;
 				interrupts = <0>;
-				dmas = <&dmamux1 9 0x400 0x01>;
+				dmas = <&dmamux1 9 0x400 0x05>;
 				dma-names = "rx";
 				status = "disabled";
 			};
@@ -1121,7 +1151,7 @@
 				reg = <0x100>;
 				interrupt-parent = <&adc>;
 				interrupts = <1>;
-				dmas = <&dmamux1 10 0x400 0x01>;
+				dmas = <&dmamux1 10 0x400 0x05>;
 				dma-names = "rx";
 				/* temperature sensor */
 				st,adc-channels = <12>;
@@ -1165,8 +1195,8 @@
 
 		sdmmc3: sdmmc@48004000 {
 			compatible = "arm,pl18x", "arm,primecell";
-			arm,primecell-periphid = <0x10153180>;
-			reg = <0x48004000 0x400>;
+			arm,primecell-periphid = <0x00253180>;
+			reg = <0x48004000 0x400>, <0x48005000 0x400>;
 			interrupts = <GIC_SPI 137 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cmd_irq";
 			clocks = <&rcc SDMMC3_K>;
@@ -1278,7 +1308,7 @@
 			interrupt-controller;
 			#interrupt-cells = <2>;
 			reg = <0x5000d000 0x400>;
-			hwlocks = <&hsem 2>;
+			hwlocks = <&hsem 1>;
 
 			/* exti_pwr is an extra interrupt controller used for
 			 * EXTI 55 to 60. It's mapped on pwr interrupt
@@ -1427,6 +1457,157 @@
 			status = "disabled";
 		};
 
+		hdp: hdp@5002a000 {
+			compatible = "st,stm32mp1-hdp";
+			reg = <0x5002a000 0x400>;
+			clocks = <&rcc HDP>;
+			clock-names = "hdp";
+			status = "disabled";
+		};
+
+		funnel: funnel@50091000 {
+			compatible = "arm,coresight-funnel", "arm,primecell";
+			reg = <0x50091000 0x1000>;
+			clocks = <&rcc CK_TRACE>;
+			clock-names = "apb_pclk";
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				/* funnel input ports */
+				port@0 {
+					reg = <0>;
+					funnel_in_port0: endpoint {
+					  slave-mode;
+					  remote-endpoint = <&stm_out_port>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					funnel_in_port1: endpoint {
+					  slave-mode; /* A7-1 input */
+					  remote-endpoint = <&etm1_out_port>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+					funnel_in_port2: endpoint {
+					  slave-mode; /* A7-2 input */
+					  remote-endpoint = <&etm2_out_port>;
+					};
+				};
+
+				port@4 {
+					reg = <4>;
+					funnel_in_port4: endpoint {
+					  slave-mode; /* REPLICATOR input */
+					  remote-endpoint = <&replicator_out_port0>;
+					};
+				};
+
+				port@5 {
+					reg = <0>;
+					funnel_out_port0: endpoint {
+					  remote-endpoint = <&etf_in_port>;
+					};
+				};
+			};
+		};
+
+		etf: etf@50092000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0x50092000 0x1000>;
+			clocks = <&rcc CK_TRACE>;
+			clock-names = "apb_pclk";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					etf_in_port: endpoint {
+						slave-mode;
+						remote-endpoint = <&funnel_out_port0>;
+					};
+				};
+
+				port@1 {
+					reg = <0>;
+					etf_out_port: endpoint {
+						remote-endpoint = <&tpiu_in_port>;
+					};
+				};
+			};
+		};
+
+		tpiu: tpiu@50093000 {
+			compatible = "arm,coresight-tpiu", "arm,primecell";
+			reg = <0x50093000 0x1000>;
+			clocks = <&rcc CK_TRACE>;
+			clock-names = "apb_pclk";
+
+			port {
+				tpiu_in_port: endpoint {
+					slave-mode;
+					remote-endpoint = <&etf_out_port>;
+				};
+			};
+		};
+
+		stm: stm@500a0000 {
+			compatible = "arm,coresight-stm", "arm,primecell";
+			reg = <0x500a0000 0x1000>, <0x90000000 0x1000000>,
+			      <0x50094000 0x1000>;
+			reg-names = "stm-base", "stm-stimulus-base", "cti-base";
+
+			clocks = <&rcc CK_TRACE>;
+			clock-names = "apb_pclk";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					stm_out_port: endpoint {
+						remote-endpoint = <&funnel_in_port0>;
+					};
+				};
+			};
+		};
+
+		/* Cortex A7-1 */
+		etm1: etm@500dc000 {
+			compatible = "arm,coresight-etm3x", "arm,primecell";
+			reg = <0x500dc000 0x1000>;
+			cpu = <&cpu0>;
+			clocks = <&rcc CK_TRACE>;
+			clock-names = "apb_pclk";
+			port {
+				etm1_out_port: endpoint {
+					remote-endpoint = <&funnel_in_port1>;
+				};
+			};
+		};
+
+		/* Cortex A7-2 */
+		etm2: etm@500dd000 {
+			compatible = "arm,coresight-etm3x", "arm,primecell";
+			reg = <0x500dd000 0x1000>;
+			cpu = <&cpu1>;
+			clocks = <&rcc CK_TRACE>;
+			clock-names = "apb_pclk";
+
+			port {
+				etm2_out_port: endpoint {
+					remote-endpoint = <&funnel_in_port2>;
+				};
+			};
+		};
+
 		cryp1: cryp@54001000 {
 			compatible = "st,stm32mp1-cryp";
 			reg = <0x54001000 0x400>;
@@ -1490,6 +1671,9 @@
 			reg = <0x58003000 0x1000>, <0x70000000 0x10000000>;
 			reg-names = "qspi", "qspi_mm";
 			interrupts = <GIC_SPI 92 IRQ_TYPE_LEVEL_HIGH>;
+			dmas = <&mdma1 22 0x10 0x100002 0x0 0x0 0x0>,
+			       <&mdma1 22 0x10 0x100008 0x0 0x0 0x0>;
+			dma-names = "tx", "rx";
 			clocks = <&rcc QSPI_K>;
 			resets = <&rcc QSPI_R>;
 			status = "disabled";
@@ -1497,8 +1681,8 @@
 
 		sdmmc1: sdmmc@58005000 {
 			compatible = "arm,pl18x", "arm,primecell";
-			arm,primecell-periphid = <0x10153180>;
-			reg = <0x58005000 0x1000>;
+			arm,primecell-periphid = <0x00253180>;
+			reg = <0x58005000 0x1000>, <0x58006000 0x1000>;
 			interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cmd_irq";
 			clocks = <&rcc SDMMC1_K>;
@@ -1512,8 +1696,8 @@
 
 		sdmmc2: sdmmc@58007000 {
 			compatible = "arm,pl18x", "arm,primecell";
-			arm,primecell-periphid = <0x10153180>;
-			reg = <0x58007000 0x1000>;
+			arm,primecell-periphid = <0x00253180>;
+			reg = <0x58007000 0x1000>, <0x58008000 0x1000>;
 			interrupts = <GIC_SPI 124 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cmd_irq";
 			clocks = <&rcc SDMMC2_K>;
@@ -1551,16 +1735,15 @@
 			clock-names = "stmmaceth",
 				      "mac-clk-tx",
 				      "mac-clk-rx",
-				      "ethstp",
-				      "syscfg-clk";
+				      "ethstp";
 			clocks = <&rcc ETHMAC>,
 				 <&rcc ETHTX>,
 				 <&rcc ETHRX>,
-				 <&rcc ETHSTP>,
-				 <&rcc SYSCFG>;
+				 <&rcc ETHSTP>;
 			st,syscon = <&syscfg 0x4>;
 			snps,mixed-burst;
 			snps,pbl = <2>;
+			snps,en-tx-lpi-clockgating;
 			snps,axi-config = <&stmmac_axi_config_0>;
 			snps,tso;
 			power-domains = <&pd_core>;
@@ -1573,6 +1756,7 @@
 			clocks = <&rcc USBH>;
 			resets = <&rcc USBH_R>;
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -1583,6 +1767,7 @@
 			resets = <&rcc USBH_R>;
 			interrupts = <GIC_SPI 75 IRQ_TYPE_LEVEL_HIGH>;
 			companion = <&usbh_ohci>;
+			power-domains = <&pd_core>;
 			status = "disabled";
 		};
 
@@ -1656,6 +1841,7 @@
 			interrupts-extended = <&intc GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>,
 					      <&exti 26 1>;
 			clocks = <&rcc USART1_K>;
+			resets = <&rcc USART1_R>;
 			wakeup-source;
 			power-domains = <&pd_core>;
 			status = "disabled";
@@ -1758,9 +1944,12 @@
 
 	m4_rproc: m4@0 {
 		compatible = "st,stm32mp1-rproc";
-		reg = <0x38000000 0x10000>,
-		      <0x10000000 0x40000>;
-		reg-names = "retram", "mcusram";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		ranges = <0x00000000 0x38000000 0x10000>,
+			 <0x30000000 0x30000000 0x60000>,
+			 <0x10000000 0x10000000 0x60000>;
 		resets = <&rcc MCU_R>;
 		reset-names = "mcu_rst";
 		st,syscfg-pdds = <&pwr 0x014 0x1>;

@@ -8,6 +8,7 @@
 #include "stm32mp157c-ed1.dts"
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/soc/stm32-hdp.h>
 
 / {
 	model = "STMicroelectronics STM32MP157C eval daughter on eval mother";
@@ -100,19 +101,15 @@
 
 	sound {
 		compatible = "audio-graph-card";
+		label = "STM32MP1-EV";
 		routing =
 			"AIF1CLK" , "MCLK1",
 			"AIF2CLK" , "MCLK1",
 			"IN1LN" , "MICBIAS2",
 			"DMIC2DAT" , "MICBIAS1",
 			"DMIC1DAT" , "MICBIAS1";
-		dais = <&sai2a_port &sai2b_port &sai4a_port &spdifrx_port>;
-		status = "okay";
-	};
-
-	dmics {
-		compatible = "audio-graph-card";
-		dais = <&cpu_port0 &cpu_port1 &cpu_port2 &cpu_port3>;
+		dais = <&sai2a_port &sai2b_port &sai4a_port &spdifrx_port
+			&dfsdm0_port &dfsdm1_port &dfsdm2_port &dfsdm3_port>;
 		status = "okay";
 	};
 
@@ -228,7 +225,7 @@
 			io-channels = <&dfsdm0 0>;
 			status = "okay";
 
-			cpu_port0: port {
+			dfsdm0_port: port {
 				dfsdm_endpoint0: endpoint {
 					remote-endpoint = <&dmic0_endpoint>;
 				};
@@ -251,7 +248,7 @@
 			io-channels = <&dfsdm1 0>;
 			status = "okay";
 
-			cpu_port1: port {
+			dfsdm1_port: port {
 				dfsdm_endpoint1: endpoint {
 					remote-endpoint = <&dmic1_endpoint>;
 				};
@@ -274,7 +271,7 @@
 			io-channels = <&dfsdm2 0>;
 			status = "okay";
 
-			cpu_port2: port {
+			dfsdm2_port: port {
 				dfsdm_endpoint2: endpoint {
 					remote-endpoint = <&dmic2_endpoint>;
 				};
@@ -297,7 +294,7 @@
 			io-channels = <&dfsdm3 0>;
 			status = "okay";
 
-			cpu_port3: port {
+			dfsdm3_port: port {
 				dfsdm_endpoint3: endpoint {
 					remote-endpoint = <&dmic3_endpoint>;
 				};
@@ -379,6 +376,17 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 	};
+};
+
+&hdp {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&hdp0_pins_a &hdp6_pins_a &hdp7_pins_a>;
+	pinctrl-1 = <&hdp0_pins_sleep_a &hdp6_pins_sleep_a &hdp7_pins_sleep_a>;
+	status = "disabled";
+
+	muxing-hdp = <(STM32_HDP(0, HDP0_GPOVAL_0) |
+		       STM32_HDP(6, HDP6_GPOVAL_6) |
+		       STM32_HDP(7, HDP7_GPOVAL_7))>;
 };
 
 &i2c2 {
@@ -577,7 +585,7 @@
 };
 
 &sai2 {
-	clocks = <&rcc SAI2>, <&rcc PLL3_Q>, <&rcc PLL4_Q>;
+	clocks = <&rcc SAI2>, <&rcc PLL3_Q>, <&rcc PLL3_R>;
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&sai2a_pins_a>, <&sai2b_pins_a>;
 	pinctrl-1 = <&sai2a_sleep_pins_a>, <&sai2b_sleep_pins_a>;
@@ -617,7 +625,7 @@
 };
 
 &sai4 {
-	clocks = <&rcc SAI4>, <&rcc PLL3_Q>, <&rcc PLL4_Q>;
+	clocks = <&rcc SAI4>, <&rcc PLL3_Q>, <&rcc PLL3_R>;
 	clock-names = "pclk", "x8k", "x11k";
 	status = "okay";
 
@@ -637,6 +645,18 @@
 			};
 		};
 	};
+};
+
+&sdmmc3 {
+	pinctrl-names = "default", "opendrain", "sleep";
+	pinctrl-0 = <&sdmmc3_b4_pins_a>;
+	pinctrl-1 = <&sdmmc3_b4_od_pins_a>;
+	pinctrl-2 = <&sdmmc3_b4_sleep_pins_a>;
+	vmmc-supply = <&v3v3>;
+	broken-cd;
+	st,neg-edge;
+	bus-width = <4>;
+	status = "disabled";
 };
 
 &spdifrx {

@@ -28,9 +28,39 @@
 		#size-cells = <1>;
 		ranges;
 
-		ipc_share: sram_rproc@10040000 {
+		retram: retram@0x38000000 {
 			compatible = "shared-dma-pool";
-			reg = <0x10040000 0x10000>;
+			reg = <0x38000000 0x10000>;
+			no-map;
+		};
+
+		mcuram: mcuram@0x30000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x30000000 0x40000>;
+			no-map;
+		};
+
+		mcuram2: mcuram2@0x10000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10000000 0x40000>;
+			no-map;
+		};
+
+		vdev0vring0: vdev0vring0@10040000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10040000 0x2000>;
+			no-map;
+		};
+
+		vdev0vring1: vdev0vring1@10042000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10042000 0x2000>;
+			no-map;
+		};
+
+		vdev0buffer: vdev0buffer@10044000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10044000 0x4000>;
 			no-map;
 		};
 
@@ -70,6 +100,19 @@
 			linux,default-trigger = "heartbeat";
 			default-state = "off";
 		};
+	};
+
+	sd_switch: regulator-sd_switch {
+		compatible = "regulator-gpio";
+		regulator-name = "sd_switch";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <2900000>;
+		regulator-type = "voltage";
+		regulator-always-on;
+
+		gpios = <&gpiof 14 GPIO_ACTIVE_HIGH>;
+		gpios-states = <0>;
+		states = <1800000 0x1 2900000 0x0>;
 	};
 };
 
@@ -119,6 +162,10 @@
 
 &dma2 {
 	sram = <&dma_pool>;
+};
+
+&dts {
+	status = "okay";
 };
 
 &gpu {
@@ -187,7 +234,7 @@
 				regulator-max-microvolt = <3300000>;
 				regulator-always-on;
 				st,mask-reset;
-				regulator-initial-mode = <2>;
+				regulator-initial-mode = <0>;
 				regulator-over-current-protection;
 			};
 
@@ -197,7 +244,7 @@
 				regulator-max-microvolt = <3300000>;
 				regulator-always-on;
 				regulator-over-current-protection;
-				regulator-initial-mode = <2>;
+				regulator-initial-mode = <0>;
 			};
 
 			vdda: ldo1 {
@@ -277,6 +324,7 @@
 
 		watchdog {
 			compatible = "st,stpmic1-wdt";
+			status = "disabled";
 		};
 	};
 };
@@ -291,7 +339,8 @@
 };
 
 &m4_rproc {
-	memory-region = <&ipc_share>;
+	memory-region = <&retram>, <&mcuram>, <&mcuram2>, <&vdev0vring0>,
+			<&vdev0vring1>, <&vdev0buffer>;
 	mboxes = <&ipcc 0>, <&ipcc 1>, <&ipcc 2>;
 	mbox-names = "vq0", "vq1", "shutdown";
 	interrupt-parent = <&exti>;
@@ -324,6 +373,12 @@
 	st,use-ckin;
 	bus-width = <4>;
 	vmmc-supply = <&vdd_sd>;
+	vqmmc-supply = <&sd_switch>;
+	sd-uhs-sdr12;
+	sd-uhs-sdr25;
+	sd-uhs-sdr50;
+	sd-uhs-ddr50;
+	sd-uhs-sdr104;
 	status = "okay";
 };
 
@@ -339,6 +394,7 @@
 	bus-width = <8>;
 	vmmc-supply = <&v3v3>;
 	vqmmc-supply = <&v3v3>;
+	mmc-ddr-3_3v;
 	status = "okay";
 };
 

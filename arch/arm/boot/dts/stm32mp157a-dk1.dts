@@ -35,9 +35,39 @@
 		#size-cells = <1>;
 		ranges;
 
-		ipc_share: sram_rproc@10040000 {
+		retram: retram@0x38000000 {
 			compatible = "shared-dma-pool";
-			reg = <0x10040000 0x10000>;
+			reg = <0x38000000 0x10000>;
+			no-map;
+		};
+
+		mcuram: mcuram@0x30000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x30000000 0x40000>;
+			no-map;
+		};
+
+		mcuram2: mcuram2@0x10000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10000000 0x40000>;
+			no-map;
+		};
+
+		vdev0vring0: vdev0vring0@10040000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10040000 0x2000>;
+			no-map;
+		};
+
+		vdev0vring1: vdev0vring1@10042000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10042000 0x2000>;
+			no-map;
+		};
+
+		vdev0buffer: vdev0buffer@10044000 {
+			compatible = "shared-dma-pool";
+			reg = <0x10044000 0x4000>;
 			no-map;
 		};
 
@@ -77,6 +107,7 @@
 
 	sound {
 		compatible = "audio-graph-card";
+		label = "STM32MP1-DK";
 		routing =
 			"Playback" , "MCLK",
 			"Capture" , "MCLK",
@@ -306,7 +337,7 @@
 				regulator-max-microvolt = <3300000>;
 				regulator-always-on;
 				st,mask-reset;
-				regulator-initial-mode = <2>;
+				regulator-initial-mode = <0>;
 				regulator-over-current-protection;
 			};
 
@@ -316,7 +347,7 @@
 				regulator-max-microvolt = <3300000>;
 				regulator-always-on;
 				regulator-over-current-protection;
-				regulator-initial-mode = <2>;
+				regulator-initial-mode = <0>;
 			};
 
 			v1v8_audio: ldo1 {
@@ -402,12 +433,13 @@
 
 		watchdog {
 			compatible = "st,stpmic1-wdt";
+			status = "disabled";
 		};
 	};
 };
 
 &i2s2 {
-	clocks = <&rcc SPI2>, <&rcc SPI2_K>, <&rcc PLL3_Q>, <&rcc PLL4_Q>;
+	clocks = <&rcc SPI2>, <&rcc SPI2_K>, <&rcc PLL3_Q>, <&rcc PLL3_R>;
 	clock-names = "pclk", "i2sclk", "x8k", "x11k";
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&i2s2_pins_a>;
@@ -447,7 +479,8 @@
 };
 
 &m4_rproc {
-	memory-region = <&ipc_share>;
+	memory-region = <&retram>, <&mcuram>, <&mcuram2>, <&vdev0vring0>,
+			<&vdev0vring1>, <&vdev0buffer>;
 	mboxes = <&ipcc 0>, <&ipcc 1>, <&ipcc 2>;
 	mbox-names = "vq0", "vq1", "shutdown";
 	interrupt-parent = <&exti>;
@@ -470,7 +503,7 @@
 };
 
 &sai2 {
-	clocks = <&rcc SAI2>, <&rcc PLL3_Q>, <&rcc PLL3_Q>;
+	clocks = <&rcc SAI2>, <&rcc PLL3_Q>, <&rcc PLL3_R>;
 	clock-names = "pclk", "x8k", "x11k";
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&sai2a_pins_a>, <&sai2b_pins_b>;
