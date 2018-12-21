@@ -415,6 +415,12 @@ enum dwc2_ep0_state {
  *			in DWORDS with possible values from from
  *			16-32768 (default: 256, 256, 256, 256, 768,
  *			768, 768, 768, 0, 0, 0, 0, 0, 0, 0).
+ * @force_b_session_valid: force B-peripheral session instead of relying on
+ *			VBUS sensing (only valid when dr_mode = "peripheral").
+ * @suspend_ignore_power_down: prevent the controller to enter low power mode
+ *			upon suspend interrupt. This may help in device mode,
+ *			when suspend (3ms idle bus) gets detected before
+ *			device session end (VBUS discharge > 3ms).
  * @change_speed_quirk: Change speed configuration to DWC2_SPEED_PARAM_FULL
  *                      while full&low speed device connect. And change speed
  *                      back to DWC2_SPEED_PARAM_HIGH while device is gone.
@@ -492,6 +498,8 @@ struct dwc2_core_params {
 	u32 g_rx_fifo_size;
 	u32 g_np_tx_fifo_size;
 	u32 g_tx_fifo_size[MAX_EPS_CHANNELS];
+	bool force_b_session_valid;
+	bool suspend_ignore_power_down;
 
 	bool change_speed_quirk;
 };
@@ -849,6 +857,8 @@ struct dwc2_hregs_backup {
  *                      removed once all SoCs support usb transceiver.
  * @supplies:           Definition of USB power supplies
  * @vbus_supply:        Regulator supplying vbus.
+ * @usb33d:		Optional 3.3v regulator used on some stm32 devices to
+ *			supply ID and VBUS detection hardware.
  * @phyif:              PHY interface width
  * @lock:		Spinlock that protects all the driver data structures
  * @priv:		Stores a pointer to the struct usb_hcd
@@ -1032,6 +1042,7 @@ struct dwc2_hsotg {
 	struct dwc2_hsotg_plat *plat;
 	struct regulator_bulk_data supplies[DWC2_NUM_SUPPLIES];
 	struct regulator *vbus_supply;
+	struct regulator *usb33d;
 	u32 phyif;
 
 	spinlock_t lock;
