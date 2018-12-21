@@ -77,11 +77,6 @@
 		};
 	};
 
-	iio-hwmon {
-		compatible = "iio-hwmon";
-		io-channels = <&adc_temp>;
-	};
-
 	sram: sram@10050000 {
 		compatible = "mmio-sram";
 		reg = <0x10050000 0x10000>;
@@ -174,6 +169,10 @@
 	sram = <&dma_pool>;
 };
 
+&dts {
+	status = "okay";
+};
+
 &ethernet0 {
 	status = "okay";
 	pinctrl-0 = <&ethernet0_rgmii_pins_a>;
@@ -195,10 +194,6 @@
 
 &gpu {
 	contiguous-area = <&gpu_reserved>;
-	status = "okay";
-};
-
-&hsem {
 	status = "okay";
 };
 
@@ -679,6 +674,7 @@
 
 &usbotg_hs {
 	dr_mode = "peripheral";
+	force-b-session-valid;
 	phys = <&usbphyc_port1 0>;
 	phy-names = "usb2-phy";
 	status = "okay";
