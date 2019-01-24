@@ -1242,6 +1242,7 @@ static int stm32_dma_mdma_prep_slave_sg(struct stm32_dma_chan *chan,
 				dev_err(chan2dev(chan),
 					"max buf size = %d bytes\n",
 					chan->sram_size);
+				ret = -EINVAL;
 				goto free_alloc;
 			}
 		} else {
@@ -1939,6 +1940,8 @@ static int stm32_dma_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "SRAM pool: %zu KiB\n",
 			gen_pool_size(dmadev->sram_pool) / 1024);
 
+	dma_set_max_seg_size(&pdev->dev, STM32_DMA_ALIGNED_MAX_DATA_ITEMS);
+
 	dma_cap_set(DMA_SLAVE, dd->cap_mask);
 	dma_cap_set(DMA_PRIVATE, dd->cap_mask);
 	dma_cap_set(DMA_CYCLIC, dd->cap_mask);
@@ -1959,6 +1962,7 @@ static int stm32_dma_probe(struct platform_device *pdev)
 		BIT(DMA_SLAVE_BUSWIDTH_4_BYTES);
 	dd->directions = BIT(DMA_DEV_TO_MEM) | BIT(DMA_MEM_TO_DEV);
 	dd->residue_granularity = DMA_RESIDUE_GRANULARITY_BURST;
+	dd->copy_align = DMAENGINE_ALIGN_32_BYTES;
 	dd->max_burst = STM32_DMA_MAX_BURST;
 	dd->descriptor_reuse = true;
 	dd->dev = &pdev->dev;
