@@ -68,6 +68,7 @@
 #define MII_KSZPHY_EXTREG_READ                  0x0d
 
 /* Extended registers */
+#define MII_KSZPHY_COMN_CONTROL                 0x100
 #define MII_KSZPHY_CLK_CONTROL_PAD_SKEW         0x104
 #define MII_KSZPHY_RX_DATA_PAD_SKEW             0x105
 #define MII_KSZPHY_TX_DATA_PAD_SKEW             0x106
@@ -546,6 +547,22 @@ static int ksz9031_config_init(struct phy_device *phydev)
 	result = ksz9031_enable_edpd(phydev);
 	if (result < 0)
 		return result;
+
+	/*
+	 * CLK125_EN = True
+	 *
+	 * Invalid software setting, CLK125_EN pin (hardware) must have a pullup.
+	 */
+	#if 0
+	{
+	int v, reg;
+
+	reg = MII_KSZPHY_COMN_CONTROL;
+	v = kszphy_extended_read(phydev, reg);
+	v |= 0x2;
+	kszphy_extended_write(phydev, reg, v);
+	}
+	#endif
 
 	/* The Micrel driver has a deprecated option to place phy OF
 	 * properties in the MAC node. Walk up the tree of devices to
