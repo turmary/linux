@@ -28,6 +28,11 @@
 
 #include "wm8960.h"
 
+#ifdef DEBUG
+#undef pr_fmt
+#define pr_fmt(fmt)     KBUILD_MODNAME ": %s:%d: " fmt, __func__, __LINE__
+#endif
+
 /* R25 - Power 1 */
 #define WM8960_VMID_MASK 0x180
 #define WM8960_VREF      0x40
@@ -66,7 +71,7 @@ static const struct reg_default wm8960_reg_defaults[] = {
 	{  0x6, 0x0000 },
 	{  0x7, 0x000a },
 	{  0x8, 0x01c0 },
-	{  0x9, 0x0000 },
+	{  0x9, 0x0040 }, /* ADCLRC/GPIO1 as GPIO pin */
 	{  0xa, 0x00ff },
 	{  0xb, 0x00ff },
 
@@ -354,6 +359,8 @@ SND_SOC_DAPM_INPUT("LINPUT3"),
 SND_SOC_DAPM_INPUT("RINPUT3"),
 
 SND_SOC_DAPM_SUPPLY("MICB", WM8960_POWER1, 1, 0, NULL, 0),
+
+SND_SOC_DAPM_CLOCK_SUPPLY("MCLK"),
 
 SND_SOC_DAPM_MIXER("Left Boost Mixer", WM8960_POWER1, 5, 0,
 		   wm8960_lin_boost, ARRAY_SIZE(wm8960_lin_boost)),
@@ -1326,14 +1333,19 @@ static const struct snd_soc_dai_ops wm8960_dai_ops = {
 	.set_sysclk = wm8960_set_dai_sysclk,
 };
 
-static struct snd_soc_dai_driver wm8960_dai = {
-	.name = "wm8960-hifi",
+static struct snd_soc_dai_driver wm8960_dai[] = {
+	{
+	.name = "wm8960-hifi0",
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 1,
 		.channels_max = 2,
 		.rates = WM8960_RATES,
 		.formats = WM8960_FORMATS,},
+	.ops = &wm8960_dai_ops,
+	},
+	{
+	.name = "wm8960-hifi1",
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
@@ -1341,7 +1353,8 @@ static struct snd_soc_dai_driver wm8960_dai = {
 		.rates = WM8960_RATES,
 		.formats = WM8960_FORMATS,},
 	.ops = &wm8960_dai_ops,
-	.symmetric_rates = 1,
+	}
+	/* .symmetric_rates = 1, */
 };
 
 static int wm8960_probe(struct snd_soc_component *component)
@@ -1407,7 +1420,7 @@ static int wm8960_i2c_probe(struct i2c_client *i2c,
 	if (wm8960 == NULL)
 		return -ENOMEM;
 
-	wm8960->mclk = devm_clk_get(&i2c->dev, "mclk");
+	wm8960->mclk = devm_clk_get(&i2c->dev, "MCLK");
 	if (IS_ERR(wm8960->mclk)) {
 		if (PTR_ERR(wm8960->mclk) == -EPROBE_DEFER)
 			return -EPROBE_DEFER;
@@ -1453,7 +1466,7 @@ static int wm8960_i2c_probe(struct i2c_client *i2c,
 	i2c_set_clientdata(i2c, wm8960);
 
 	ret = devm_snd_soc_register_component(&i2c->dev,
-			&soc_component_dev_wm8960, &wm8960_dai, 1);
+			&soc_component_dev_wm8960, wm8960_dai, ARRAY_SIZE(wm8960_dai));
 
 	return ret;
 }
