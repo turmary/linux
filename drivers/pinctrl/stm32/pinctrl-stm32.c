@@ -541,7 +541,8 @@ static int stm32_pctrl_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 		func = STM32_GET_PIN_FUNC(pinfunc);
 
 		if (!stm32_pctrl_is_function_valid(pctl, pin, func)) {
-			dev_err(pctl->dev, "invalid function.\n");
+			dev_err(pctl->dev, "invalid function %d on pin %d .\n",
+				func, pin);
 			err = -EINVAL;
 			goto exit;
 		}

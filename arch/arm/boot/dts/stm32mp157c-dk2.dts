@@ -19,7 +19,7 @@
 
 	wifi_pwrseq: wifi-pwrseq {
 		compatible = "mmc-pwrseq-simple";
-		reset-gpios = <&gpioh 4 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpioz 0 GPIO_ACTIVE_LOW>;
 	};
 };
 
@@ -128,6 +128,7 @@
 };
 
 /* Bluetooth */
+#if 0
 &usart2 {
 	pinctrl-names = "default", "sleep", "idle";
 	pinctrl-0 = <&usart2_pins_a>;
@@ -143,3 +144,4 @@
 		max-speed = <3000000>;
 	};
 };
+#endif
