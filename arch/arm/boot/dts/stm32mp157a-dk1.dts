@@ -729,16 +729,22 @@
 };
 
 &usbh_ehci {
-	phys = <&usbphyc_port0>;
-	phy-names = "usb";
+	phys = <&usbphyc_port0>, <&usbphyc_port1 1>;
+	phy-names = "usb", "usb2";
 	status = "okay";
 };
 
 &usbotg_hs {
+	compatible = "st,stm32mp1-fsotg", "snps,dwc2";                    /* Use full-speed integrated PHY */
+	pinctrl-names = "default";
+	pinctrl-0 = <&usbotg_hs_pins_a &usbotg_fs_dp_dm_pins_a>;          /* configure OTG ID and full-speed data pins */
+	vbus-supply = <&vbus_otg>;                                        /* voltage regulator to supply Vbus */
 	dr_mode = "peripheral";
 	force-b-session-valid;
+	/*
 	phys = <&usbphyc_port1 0>;
 	phy-names = "usb2-phy";
+	*/
 	status = "okay";
 };
 
