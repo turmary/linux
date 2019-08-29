@@ -38,6 +38,15 @@
 #ifndef __DWC2_CORE_H__
 #define __DWC2_CORE_H__
 
+
+//#define DEBUG	1
+
+#ifdef DEBUG
+#undef pr_fmt
+#define pr_fmt(fmt)     KBUILD_MODNAME ": %s:%d: " fmt, __func__, __LINE__
+#endif
+
+
 #include <linux/phy/phy.h>
 #include <linux/regulator/consumer.h>
 #include <linux/usb/gadget.h>
