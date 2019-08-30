@@ -548,6 +548,11 @@ static const uint max_roundup = 512;
 #define ALIGNMENT  4
 #endif
 
+#ifdef CONFIG_MACH_STM32MP157
+#undef ALIGNMENT
+#define ALIGNMENT  32
+#endif
+
 enum brcmf_sdio_frmtype {
 	BRCMF_SDIO_FT_NORMAL,
 	BRCMF_SDIO_FT_SUPER,

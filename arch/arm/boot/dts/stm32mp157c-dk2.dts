@@ -14,12 +14,15 @@
 	compatible = "st,stm32mp157c-dk2", "st,stm32mp157";
 
 	aliases {
-		serial3 = &usart2;
+		serial3 = &usart1;
+		mmc0    = &sdmmc1;
+		mmc1    = &sdmmc2;
+		mmc2    = &sdmmc3;
 	};
 
 	wifi_pwrseq: wifi-pwrseq {
 		compatible = "mmc-pwrseq-simple";
-		reset-gpios = <&gpioz 0 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpiod 9 GPIO_ACTIVE_LOW>;
 	};
 };
 
@@ -105,35 +108,46 @@
 };
 
 /* Wifi */
-&sdmmc2 {
-	arm,primecell-periphid = <0x10153180>;
+&sdmmc3 {
+	/* arm,primecell-periphid = <0x10153180>; */
 	pinctrl-names = "default", "opendrain", "sleep";
-	pinctrl-0 = <&sdmmc2_b4_pins_b>;
-	pinctrl-1 = <&sdmmc2_b4_od_pins_b>;
-	pinctrl-2 = <&sdmmc2_b4_sleep_pins_a>;
+	pinctrl-0 = <&sdmmc3_b4_pins_a>;
+	pinctrl-1 = <&sdmmc3_b4_od_pins_a>;
+	pinctrl-2 = <&sdmmc3_b4_sleep_pins_a>;
 	non-removable;
+	broken-cd;
 	st,neg-edge;
+	st,sig-dir;
+
 	bus-width = <4>;
 	vmmc-supply = <&v3v3>;
 	mmc-pwrseq = <&wifi_pwrseq>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	keep-power-in-suspend;
+	supports-sdio;
+	sd-uhs-sdr104;
 	status = "okay";
 
 	brcmf: bcrmf@1 {
 		reg = <1>;
 		compatible = "brcm,bcm4329-fmac";
+		brcm,sd-head-align    = <32>;
+		brcm,sd-sgentry-align = <32>;
+		/*
+		interrupt-parent = <&gpiog>;
+		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
+		interrupt-names = "host-wake";
+		*/
 	};
 };
 
 /* Bluetooth */
-#if 0
-&usart2 {
+&usart1 {
 	pinctrl-names = "default", "sleep", "idle";
-	pinctrl-0 = <&usart2_pins_a>;
-	pinctrl-1 = <&usart2_sleep_pins_a>;
-	pinctrl-2 = <&usart2_idle_pins_a>;
+	pinctrl-0 = <&usart1_pins_a>;
+	pinctrl-1 = <&usart1_sleep_pins_a>;
+	pinctrl-2 = <&usart1_idle_pins_a>;
 	st,hw-flow-ctrl;
 	status = "okay";
 
@@ -144,4 +158,4 @@
 		max-speed = <3000000>;
 	};
 };
-#endif
+
