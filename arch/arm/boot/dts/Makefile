@@ -1213,3 +1213,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-opp-zaius.dtb \
 	aspeed-bmc-portwell-neptune.dtb \
 	aspeed-bmc-quanta-q71l.dtb
+
+# Enable fixups to support overlays (/__symbols__)
+DTC_FLAGS ?= -@
+
