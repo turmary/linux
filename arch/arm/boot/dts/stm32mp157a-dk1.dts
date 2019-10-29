@@ -221,8 +221,38 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
+
 		phy0: ethernet-phy@7 {
 			reg = <7>;
+
+			/*
+			 * These skews assume the STM32MP1 has no internal delay.
+			 *
+			 * All skews are offset since hardware skew values for the ksz9031
+			 * range from a negative skew to a positive skew.
+			 * See the micrel-ksz90x1.txt Documentation file for details.
+			 */
+			/* REG 0x0008, 5 bits per skew */
+			txc-skew-ps  = <1800>;/*  900ps */
+			rxc-skew-ps  = <1320>;/*  420ps */
+
+			/* REG 0x0004, 4 bits per skew */
+			txen-skew-ps = <420>;  /*   0ps */
+			rxdv-skew-ps = <420>; /*    0ps */
+
+			/* REG 0x0005, 4 bits per skew */
+			rxd0-skew-ps = <720>; /*  300ps */
+			rxd1-skew-ps = <780>; /*  360ps */
+			rxd2-skew-ps = <840>; /*  420ps */
+			rxd3-skew-ps = <900>; /*  480ps */
+
+			/* REG 0x0006, 4 bits per skew */
+			txd0-skew-ps = <0>;   /* -420ps */
+			txd1-skew-ps = <60>;  /* -360ps */
+			txd2-skew-ps = <120>; /* -300ps */
+			txd3-skew-ps = <180>; /* -240ps */
+
+			micrel,force-master;
 		};
 	};
 };

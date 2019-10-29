@@ -476,8 +476,10 @@ static int ksz9031_of_load_skew_values(struct phy_device *phydev,
 		if (!of_property_read_u32(of_node, field[i], val + i))
 			matches++;
 
-	if (!matches)
+	if (!matches) {
+		pr_info("ksz9031 no maches\n");
 		return 0;
+	}
 
 	if (matches < numfields)
 		newval = ksz9031_extended_read(phydev, OP_DATA, 2, reg);
