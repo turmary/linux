@@ -102,10 +102,35 @@
 
 	led {
 		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <>;
+		status = "okay";
+
 		blue {
-			label = "heartbeat";
-			gpios = <&gpioh 15 GPIO_ACTIVE_HIGH>;
+			label = "blue";
+			gpios = <&gpiog  3 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "heartbeat";
+			default-state = "off";
+		};
+
+		usr0 {
+			label = "usr0";
+			gpios = <&gpioi  1 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "default-on";
+			default-state = "off";
+		};
+
+		usr1 {
+			label = "usr1";
+			gpios = <&gpioh 15 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "mmc0";
+			default-state = "off";
+		};
+
+		usr2 {
+			label = "usr2";
+			gpios = <&gpioi  0 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "mmc1";
 			default-state = "off";
 		};
 	};
