@@ -92,57 +92,24 @@
 		};
 	};
 
-	clocks {
-		clk_ext_camera: clk-ext-camera {
-			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <24000000>;
-		};
-	};
-
 	led {
 		compatible = "gpio-leds";
-		pinctrl-names = "default";
-		pinctrl-0 = <>;
-		status = "okay";
-
 		blue {
-			label = "blue";
-			gpios = <&gpiog  3 GPIO_ACTIVE_HIGH>;
+			label = "heartbeat";
+			gpios = <&gpiod 11 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "heartbeat";
-			default-state = "off";
-		};
-
-		usr0 {
-			label = "usr0";
-			gpios = <&gpioi  1 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "default-on";
-			default-state = "off";
-		};
-
-		usr1 {
-			label = "usr1";
-			gpios = <&gpioh 15 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "mmc0";
-			default-state = "off";
-		};
-
-		usr2 {
-			label = "usr2";
-			gpios = <&gpioi  0 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "mmc1";
 			default-state = "off";
 		};
 	};
 
 	sound {
 		compatible = "audio-graph-card";
-		label = "STM32MP1-SEEEDNPi";
+		label = "STM32MP1-DK";
 		routing =
 			"Playback" , "MCLK",
 			"Capture" , "MCLK",
-			"LINPUT1" , "MICB";
-		dais = <&sai2a_port &sai2b_port /*&i2s2_port*/>;
+			"MICL" , "Mic Bias";
+		dais = <&sai2a_port &sai2b_port &i2s2_port>;
 		status = "okay";
 	};
 
@@ -221,38 +188,8 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		compatible = "snps,dwmac-mdio";
-
-		phy0: ethernet-phy@7 {
-			reg = <7>;
-
-			/*
-			 * These skews assume the STM32MP1 has no internal delay.
-			 *
-			 * All skews are offset since hardware skew values for the ksz9031
-			 * range from a negative skew to a positive skew.
-			 * See the micrel-ksz90x1.txt Documentation file for details.
-			 */
-			/* REG 0x0008, 5 bits per skew */
-			txc-skew-ps  = <1800>;/*  900ps */
-			rxc-skew-ps  = <1320>;/*  420ps */
-
-			/* REG 0x0004, 4 bits per skew */
-			txen-skew-ps = <420>;  /*   0ps */
-			rxdv-skew-ps = <420>; /*    0ps */
-
-			/* REG 0x0005, 4 bits per skew */
-			rxd0-skew-ps = <720>; /*  300ps */
-			rxd1-skew-ps = <780>; /*  360ps */
-			rxd2-skew-ps = <840>; /*  420ps */
-			rxd3-skew-ps = <900>; /*  480ps */
-
-			/* REG 0x0006, 4 bits per skew */
-			txd0-skew-ps = <0>;   /* -420ps */
-			txd1-skew-ps = <60>;  /* -360ps */
-			txd2-skew-ps = <120>; /* -300ps */
-			txd3-skew-ps = <180>; /* -240ps */
-
-			micrel,force-master;
+		phy0: ethernet-phy@0 {
+			reg = <0>;
 		};
 	};
 };
@@ -272,9 +209,9 @@
 	/delete-property/dmas;
 	/delete-property/dma-names;
 
-	wm8960: wm8960@1a {
-		compatible = "wlf,wm8960";
-		reg = <0x1a>;
+	cs42l51: cs42l51@4a {
+		compatible = "cirrus,cs42l51";
+		reg = <0x4a>;
 		#sound-dai-cells = <0>;
 		status = "okay";
 
@@ -288,20 +225,18 @@
 		clocks = <&sai2a>;
 		clock-names = "MCLK";
 
-		wlf,shared-lrclk;
-
-		wm8960_port: port {
+		cs42l51_port: port {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			wm8960_tx_endpoint: endpoint@0 {
+			cs42l51_tx_endpoint: endpoint@0 {
 				reg = <0>;
 				remote-endpoint = <&sai2a_endpoint>;
 				frame-master;
 				bitclock-master;
 			};
 
-			wm8960_rx_endpoint: endpoint@1 {
+			cs42l51_rx_endpoint: endpoint@1 {
 				reg = <1>;
 				remote-endpoint = <&sai2b_endpoint>;
 				frame-master;
@@ -310,7 +245,6 @@
 		};
 	};
 
-	#if 0
 	hdmi-transmitter@39 {
 		compatible = "sil,sii9022";
 		reg = <0x39>;
@@ -343,13 +277,12 @@
 			};
 		};
 	};
-	#endif
 };
 
-&i2c2 {
+&i2c4 {
 	pinctrl-names = "default", "sleep";
-	pinctrl-0 = <&i2c2_pins_a>;
-	pinctrl-1 = <&i2c2_pins_sleep_a>;
+	pinctrl-0 = <&i2c4_pins_a>;
+	pinctrl-1 = <&i2c4_pins_sleep_a>;
 	i2c-scl-rising-time-ns = <185>;
 	i2c-scl-falling-time-ns = <20>;
 	status = "okay";
@@ -513,44 +446,8 @@
 			status = "disabled";
 		};
 	};
-
-	ov5640: camera@3c {
-		compatible = "ovti,ov5640";
-		reg = <0x3c>;
-		clocks = <&clk_ext_camera>;
-		clock-names = "xclk";
-		DOVDD-supply = <&v3v3_hdmi>;
-		powerdown-gpios = <&gpioe 12 GPIO_ACTIVE_HIGH>;
-		reset-gpios     = <&gpioz  4  GPIO_ACTIVE_LOW>;
-		rotation = <180>;
-		status = "okay";
-
-		port {
-			ov5640_0: endpoint {
-				remote-endpoint = <&dcmi_0>;
-				bus-width = <8>;
-				data-shift = <0>; /* lines 7:0 are used */
-				hsync-active = <0>;
-				vsync-active = <0>;
-				pclk-sample = <1>;
-				pclk-max-frequency = <77000000>;
-			};
-		};
-	};
 };
 
-&i2c4 {
-	pinctrl-names = "default", "sleep";
-	pinctrl-0 = <&i2c4_pins_a>;
-	pinctrl-1 = <&i2c4_pins_sleep_a>;
-	i2c-scl-rising-time-ns = <185>;
-	i2c-scl-falling-time-ns = <20>;
-	status = "okay";
-	/delete-property/dmas;
-	/delete-property/dma-names;
-};
-
-/*
 &i2s2 {
 	clocks = <&rcc SPI2>, <&rcc SPI2_K>, <&rcc PLL3_Q>, <&rcc PLL3_R>;
 	clock-names = "pclk", "i2sclk", "x8k", "x11k";
@@ -567,7 +464,6 @@
 		};
 	};
 };
-*/
 
 &ipcc {
 	status = "okay";
@@ -578,7 +474,6 @@
 	status = "okay";
 };
 
-/*
 &ltdc {
 	status = "okay";
 
@@ -591,7 +486,7 @@
 			remote-endpoint = <&sii9022_in>;
 		};
 	};
-};*/
+};
 
 &m4_rproc {
 	memory-region = <&retram>, <&mcuram>, <&mcuram2>, <&vdev0vring0>,
@@ -634,11 +529,11 @@
 
 		sai2a_port: port {
 			sai2a_endpoint: endpoint {
-				remote-endpoint = <&wm8960_tx_endpoint>;
+				remote-endpoint = <&cs42l51_tx_endpoint>;
 				format = "i2s";
 				mclk-fs = <256>;
 				dai-tdm-slot-num = <2>;
-				dai-tdm-slot-width = <0>;	/* 0 = AUTO-WIDTH */
+				dai-tdm-slot-width = <32>;
 			};
 		};
 	};
@@ -646,17 +541,17 @@
 	sai2b: audio-controller@4400b024 {
 		dma-names = "rx";
 		st,sync = <&sai2a 2>;
+		status = "okay";
 		clocks = <&rcc SAI2_K>, <&sai2a>;
 		clock-names = "sai_ck", "MCLK";
-		status = "okay";
 
 		sai2b_port: port {
 			sai2b_endpoint: endpoint {
-				remote-endpoint = <&wm8960_rx_endpoint>;
+				remote-endpoint = <&cs42l51_rx_endpoint>;
 				format = "i2s";
 				mclk-fs = <256>;
 				dai-tdm-slot-num = <2>;
-				dai-tdm-slot-width = <0>;	/* 0 = AUTO-WIDTH */
+				dai-tdm-slot-width = <32>;
 			};
 		};
 	};
@@ -795,25 +690,16 @@
 };
 
 &usbh_ehci {
-	phys = <&usbphyc_port0>, <&usbphyc_port1 1>;
-	phy-names = "usb", "usb2";
+	phys = <&usbphyc_port0>;
+	phy-names = "usb";
 	status = "okay";
 };
 
 &usbotg_hs {
-	compatible = "st,stm32mp1-fsotg", "snps,dwc2";                    /* Use full-speed integrated PHY */
-	pinctrl-names = "default";
-	pinctrl-0 = <&usbotg_hs_pins_a &usbotg_fs_dp_dm_pins_a>;          /* configure OTG ID and full-speed data pins */
-	vbus-supply = <&vbus_otg>;                                        /* voltage regulator to supply Vbus */
 	dr_mode = "peripheral";
-	/*
-	 * don't use with FS PHY
-	 * force-b-session-valid;
-	 */
-	/*
+	force-b-session-valid;
 	phys = <&usbphyc_port1 0>;
 	phy-names = "usb2-phy";
-	*/
 	status = "okay";
 };
 
@@ -836,22 +722,3 @@
 	vdda-supply = <&vdd>;
 	status = "okay";
 };
-
-&dcmi {
-	status = "okay";
-	pinctrl-names = "default", "sleep";
-	pinctrl-0 = <&dcmi_pins_a>;
-	pinctrl-1 = <&dcmi_sleep_pins_a>;
-
-	port {
-		dcmi_0: endpoint {
-			remote-endpoint = <&ov5640_0>;
-			bus-width = <8>;
-			hsync-active = <0>;
-			vsync-active = <0>;
-			pclk-sample = <1>;
-			pclk-max-frequency = <77000000>;
-		};
-	};
-};
-
