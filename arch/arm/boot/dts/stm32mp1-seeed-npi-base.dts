@@ -2,6 +2,10 @@
 /*
  * Copyright (C) STMicroelectronics 2018 - All Rights Reserved
  * Author: Alexandre Torgue <alexandre.torgue@st.com>.
+ *
+ * Copyright (C) Seeed Studio 2019 - All Rights Reserved
+ * Author: Peter Yang <turmary@126.com>
+ *
  */
 
 /dts-v1/;
