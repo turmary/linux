@@ -344,6 +344,8 @@
 		interrupts-extended = <&exti_pwr 55 IRQ_TYPE_EDGE_FALLING>;
 		interrupt-controller;
 		#interrupt-cells = <2>;
+		interrupt-parent = <&gpioa>;
+		interrupts = <0 IRQ_TYPE_EDGE_FALLING>;
 		status = "okay";
 
 		st,main-control-register = <0x04>;
@@ -452,28 +454,30 @@
 				regulator-over-current-protection;
 			};
 
-			 bst_out: boost {
+			bst_out: boost {
 				regulator-name = "bst_out";
 				interrupts = <IT_OCP_BOOST 0>;
-			 };
+			};
 
 			vbus_otg: pwr_sw1 {
 				regulator-name = "vbus_otg";
 				interrupts = <IT_OCP_OTG 0>;
 				regulator-active-discharge;
-			 };
+			};
 
-			 vbus_sw: pwr_sw2 {
+			vbus_sw: pwr_sw2 {
 				regulator-name = "vbus_sw";
 				interrupts = <IT_OCP_SWOUT 0>;
 				regulator-active-discharge;
-			 };
+			};
 		};
 
 		onkey {
 			compatible = "st,stpmic1-onkey";
 			interrupts = <IT_PONKEY_F 0>, <IT_PONKEY_R 1>;
 			interrupt-names = "onkey-falling", "onkey-rising";
+			power-off-time-sec = <5>;
+			st,onkey-clear-cc-flag;
 			status = "okay";
 		};
 
