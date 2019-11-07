@@ -306,6 +306,7 @@
 		clock-names = "wm-mclk";
 
 		wlf,shared-lrclk;
+		wlf,double-dai;
 
 		wm8960_port: port {
 			#address-cells = <1>;
