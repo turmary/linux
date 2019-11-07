@@ -245,6 +245,7 @@ struct stm32_i2s_data {
 	unsigned int fmt;
 	int refcount;
 	int ms_flg;
+	int ioswp;
 };
 
 static irqreturn_t stm32_i2s_isr(int irq, void *devid)
@@ -854,6 +855,10 @@ static int stm32_i2s_parse_dt(struct platform_device *pdev,
 		return PTR_ERR(i2s->x11kclk);
 	}
 
+	if (of_property_read_bool(np, "ioswp")) {
+		i2s->ioswp = true;
+	}
+
 	/* Get irqs */
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
@@ -922,6 +927,12 @@ static int stm32_i2s_probe(struct platform_device *pdev)
 	/* Set SPI/I2S in i2s mode */
 	ret = regmap_update_bits(i2s->regmap, STM32_I2S_CGFR_REG,
 				 I2S_CGFR_I2SMOD, I2S_CGFR_I2SMOD);
+	if (ret)
+		return ret;
+
+	/* Swap SDI & SDO if required */
+	ret = regmap_update_bits(i2s->regmap, STM32_I2S_CFG2_REG,
+			         I2S_CFG2_IOSWP, i2s->ioswp? I2S_CFG2_IOSWP: 0);
 	if (ret)
 		return ret;
 
