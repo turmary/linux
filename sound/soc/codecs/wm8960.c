@@ -360,7 +360,7 @@ SND_SOC_DAPM_INPUT("RINPUT3"),
 
 SND_SOC_DAPM_SUPPLY("MICB", WM8960_POWER1, 1, 0, NULL, 0),
 
-SND_SOC_DAPM_CLOCK_SUPPLY("MCLK"),
+SND_SOC_DAPM_CLOCK_SUPPLY("wm-mclk"),
 
 SND_SOC_DAPM_MIXER("Left Boost Mixer", WM8960_POWER1, 5, 0,
 		   wm8960_lin_boost, ARRAY_SIZE(wm8960_lin_boost)),
@@ -1420,7 +1420,7 @@ static int wm8960_i2c_probe(struct i2c_client *i2c,
 	if (wm8960 == NULL)
 		return -ENOMEM;
 
-	wm8960->mclk = devm_clk_get(&i2c->dev, "MCLK");
+	wm8960->mclk = devm_clk_get(&i2c->dev, "wm-mclk");
 	if (IS_ERR(wm8960->mclk)) {
 		if (PTR_ERR(wm8960->mclk) == -EPROBE_DEFER)
 			return -EPROBE_DEFER;
