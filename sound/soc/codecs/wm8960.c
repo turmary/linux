@@ -1333,7 +1333,7 @@ static const struct snd_soc_dai_ops wm8960_dai_ops = {
 	.set_sysclk = wm8960_set_dai_sysclk,
 };
 
-static struct snd_soc_dai_driver wm8960_dai[] = {
+static struct snd_soc_dai_driver wm8960_dai_double[] = {
 	{
 	.name = "wm8960-hifi0",
 	.playback = {
@@ -1355,6 +1355,24 @@ static struct snd_soc_dai_driver wm8960_dai[] = {
 	.ops = &wm8960_dai_ops,
 	}
 	/* .symmetric_rates = 1, */
+};
+
+static struct snd_soc_dai_driver wm8960_dai_single = {
+	.name = "wm8960-hifi",
+	.playback = {
+		.stream_name = "Playback",
+		.channels_min = 1,
+		.channels_max = 2,
+		.rates = WM8960_RATES,
+		.formats = WM8960_FORMATS,},
+	.capture = {
+		.stream_name = "Capture",
+		.channels_min = 1,
+		.channels_max = 2,
+		.rates = WM8960_RATES,
+		.formats = WM8960_FORMATS,},
+	.ops = &wm8960_dai_ops,
+	.symmetric_rates = 1,
 };
 
 static int wm8960_probe(struct snd_soc_component *component)
@@ -1406,6 +1424,9 @@ static void wm8960_set_pdata_from_of(struct i2c_client *i2c,
 
 	if (of_property_read_bool(np, "wlf,shared-lrclk"))
 		pdata->shared_lrclk = true;
+
+	if (of_property_read_bool(np, "wlf,double-dai"))
+		pdata->double_dai = true;
 }
 
 static int wm8960_i2c_probe(struct i2c_client *i2c,
@@ -1413,6 +1434,7 @@ static int wm8960_i2c_probe(struct i2c_client *i2c,
 {
 	struct wm8960_data *pdata = dev_get_platdata(&i2c->dev);
 	struct wm8960_priv *wm8960;
+	struct snd_soc_dai_driver* wm8960_dai;
 	int ret;
 
 	wm8960 = devm_kzalloc(&i2c->dev, sizeof(struct wm8960_priv),
@@ -1465,8 +1487,10 @@ static int wm8960_i2c_probe(struct i2c_client *i2c,
 
 	i2c_set_clientdata(i2c, wm8960);
 
+	wm8960_dai = wm8960->pdata.double_dai? wm8960_dai_double: &wm8960_dai_single;
 	ret = devm_snd_soc_register_component(&i2c->dev,
-			&soc_component_dev_wm8960, wm8960_dai, ARRAY_SIZE(wm8960_dai));
+			&soc_component_dev_wm8960, wm8960_dai,
+			wm8960->pdata.double_dai? 2: 1);
 
 	return ret;
 }
