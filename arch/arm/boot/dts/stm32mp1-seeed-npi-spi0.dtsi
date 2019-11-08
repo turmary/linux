@@ -1,0 +1,60 @@
+// Peter Yang, 20191108
+// Seeed 2Mic Voice Card (apa102)
+/{
+	aliases {
+		spi0	= &spi5;	/* RPi compatible */
+		spi1	= &spi2;
+	};
+};
+
+&spi5 {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&spi5_pins_s>;
+	pinctrl-1 = <&spi5_sleep_pins_s>;
+	cs-gpios = <&gpiof 6 GPIO_ACTIVE_LOW>, <&gpiof 3 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	spidev0_0: spi0channel@0 {
+		/* rohm,dh2228fv is a dummy to prevent warnning */
+		compatible = "rohm,dh2228fv", "spidev";
+		reg = <0>;
+		spi-max-frequency = <20000000>;
+	};
+
+	spidev0_1: spi0channel@1 {
+		compatible = "rohm,dh2228fv", "spidev";
+		reg = <1>;
+		spi-max-frequency = <20000000>;
+	};
+
+};
+
+		&pinctrl {
+			spi5_pins_s: spi5-1 {
+				pins1 {
+					pinmux = <STM32_PINMUX('H', 6, AF5)>, /* SPI5_SCK */
+						 <STM32_PINMUX('F', 9, AF5)>; /* SPI5_MOSI */
+						 /* <STM32_PINMUX('F', 6, GPIO)>, SPI5_NSS0 */
+						 /* <STM32_PINMUX('F', 3, GPIO)>; SPI5_NSS1 */
+					bias-disable;
+					drive-push-pull;
+					slew-rate = <1>;
+				};
+
+				pins2 {
+					pinmux = <STM32_PINMUX('H', 7, AF5)>; /* SPI5_MISO */
+					bias-disable;
+				};
+			};
+
+			spi5_sleep_pins_s: spi5-sleep-1 {
+				pins {
+					pinmux = <STM32_PINMUX('H', 6, ANALOG)>, /* SPI5_SCK */
+						 <STM32_PINMUX('H', 7, ANALOG)>, /* SPI5_MISO */
+						 <STM32_PINMUX('F', 9, ANALOG)>; /* SPI5_MOSI */
+						 /* <STM32_PINMUX('F', 6, ANALOG)>, SPI5_NSS0 */
+						 /* <STM32_PINMUX('F', 3, ANALOG)>; SPI5_NSS1 */
+				};
+			};
+		};
+

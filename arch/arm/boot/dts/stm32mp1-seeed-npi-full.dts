@@ -955,5 +955,7 @@
 
 #if RPI_EXPANSION
 #include "stm32mp1-seeed-npi-uart2.dtsi"
+#include "stm32mp1-seeed-npi-wm8960.dtsi"
+#include "stm32mp1-seeed-npi-spi0.dtsi"
 #endif
 

@@ -1,0 +1,145 @@
+// Peter Yang, 20191107
+// Seeed 2Mic Voice Card (wm8960)
+
+/{
+	aliases {
+		sound2 = "/sound2";
+	};
+
+	sound2: sound2 {
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "seeed-2mic-voicecard";
+		status = "okay";
+
+		simple-audio-card,widgets =
+			"Microphone", "MICB",
+			"Line", "LINPUT1",
+			"Line", "LINPUT2",
+			"Line", "LINPUT3",
+			"Line", "RINPUT1",
+			"Line", "RINPUT2",
+			"Line", "RINPUT3",
+			"Headphone", "HP_L",
+			"Headphone", "HP_R",
+			"Speaker", "SPK_LP",
+			"Speaker", "SPK_LN",
+			"Speaker", "SPK_RP",
+			"Speaker", "SPK_RN";
+		simple-audio-card,routing =
+			"Playback" , "wm-mclk",
+			"Capture" , "wm-mclk",
+			"LINPUT1" , "MICB";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,bitclock-master = <&sound2_master>;
+		simple-audio-card,frame-master = <&sound2_master>;
+		/* simple-audio-card,bitclock-inversion; */
+
+		sound2_master: simple-audio-card,cpu {
+			sound-dai = <&i2s2>;
+			system-clock-direction-out;
+			system-clock-frequency = <0>;
+			system-clock-id = <1>;
+		};
+
+		/* sound2_master:*/ simple-audio-card,codec {
+			sound-dai = <&wm8960>;
+			/*
+			system-clock-frequency = <12288000>;
+			system-clock-id = <1>;
+			*/
+			system-clock-frequency = <24000000>;
+			system-clock-id = <0>;
+		};
+	};
+};
+
+&i2s2 {
+	clocks = <&rcc SPI2>, <&rcc SPI2_K>, <&rcc PLL3_Q>, <&rcc PLL3_R>;
+	clock-names = "pclk", "i2sclk", "x8k", "x11k";
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&i2s2_pins_s>;
+	pinctrl-1 = <&i2s2_pins_sleep_s>;
+	status = "okay";
+};
+
+/ {
+	clocks {
+		wm8960_mclk: wm8960_mclk {
+			compatible = "fixed-clock";
+			#clock-cells = <0x0>;
+			clock-frequency = <24000000>;
+		};
+	};
+};
+
+&i2c4 {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&i2c4_pins_s2>;
+	pinctrl-1 = <&i2c4_pins_sleep_s2>;
+	i2c-scl-rising-time-ns = <185>;
+	i2c-scl-falling-time-ns = <20>;
+	status = "okay";
+	/delete-property/dmas;
+	/delete-property/dma-names;
+	// clock-frequency = <100000>;
+
+	wm8960: wm8960@1A {
+		#sound-dai-cells = <0x0>;
+		compatible = "wlf,wm8960";
+		status = "okay";
+
+		reg = <0x1a>;
+
+		AVDD-supply = <&v3v3>;
+		DVDD-supply = <&v1v8_audio>;
+
+		clocks = <&wm8960_mclk>;
+		clock-names = "wm-mclk";
+
+		wlf,shared-lrclk;
+	};
+};
+
+
+		&pinctrl {
+			i2c4_pins_s2: i2c4-0 {
+				pins {
+					pinmux = <STM32_PINMUX('B',  8, AF6)>, /* I2C4_SCL */
+						 <STM32_PINMUX('H', 12, AF4)>; /* I2C4_SDA */
+					bias-disable;
+					drive-open-drain;
+					slew-rate = <0>;
+				};
+			};
+
+			i2c4_pins_sleep_s2: i2c4-1 {
+				pins {
+					pinmux = <STM32_PINMUX('B',  8, ANALOG)>, /* I2C4_SCL */
+						 <STM32_PINMUX('H', 12, ANALOG)>; /* I2C4_SDA */
+				};
+			};
+
+
+
+			i2s2_pins_s: i2s2-2 {
+				pins {
+					pinmux = <STM32_PINMUX('C', 3, AF5)>, /* I2S2_SDO */
+						 <STM32_PINMUX('B',12, AF5)>, /* I2S2_WS */
+						 <STM32_PINMUX('B',10, AF5)>, /* I2S2_CK */
+						 <STM32_PINMUX('I', 2, AF5)>; /* I2S2_SDI */
+					slew-rate = <1>;
+					drive-push-pull;
+					bias-disable;
+				};
+			};
+
+			i2s2_pins_sleep_s: i2s2-3 {
+				pins {
+					pinmux = <STM32_PINMUX('C', 3, ANALOG)>, /* I2S2_SDO */
+						 <STM32_PINMUX('B',12, ANALOG)>, /* I2S2_WS */
+						 <STM32_PINMUX('B',10, ANALOG)>, /* I2S2_CK */
+						 <STM32_PINMUX('I', 2, ANALOG)>; /* I2S2_SDI */
+				};
+			};
+		};
+
