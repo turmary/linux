@@ -333,7 +333,9 @@ static int stm32mp1_parse_data(struct stm32_dwmac *dwmac,
 		err = PTR_ERR(dwmac->syscfg_clk);
 		if (err != -ENOENT)
 			return err;
+		dev_warn(dev, "No syscfg-clk provided...\n");
 		dwmac->syscfg_clk = NULL;
+		err = 0;
 	}
 
 	/* Get IRQ information early to have an ability to ask for deferred
@@ -392,7 +394,7 @@ static int stm32_dwmac_probe(struct platform_device *pdev)
 
 	ret = stm32_dwmac_parse_data(dwmac, &pdev->dev);
 	if (ret) {
-		dev_err(&pdev->dev, "Unable to parse OF data\n");
+		dev_err(&pdev->dev, "Unable to parse OF data, error %d\n", ret);
 		goto err_remove_config_dt;
 	}
 
