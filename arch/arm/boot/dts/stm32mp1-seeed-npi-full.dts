@@ -544,7 +544,6 @@
 	};
 };
 
-#if RPI_EXPANSION
 &i2c4 {
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&i2c4_pins_s>;
@@ -555,7 +554,6 @@
 	/delete-property/dmas;
 	/delete-property/dma-names;
 };
-#endif
 
 &ipcc {
 	status = "okay";
