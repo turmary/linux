@@ -768,6 +768,12 @@
 	status = "disabled";
 };
 
+&usbh_ohci {
+	phys = <&usbphyc_port0>, <&usbphyc_port1 1>;
+	phy-names = "usb", "usb2";
+	status = "okay";
+};
+
 &usbh_ehci {
 	phys = <&usbphyc_port0>, <&usbphyc_port1 1>;
 	phy-names = "usb", "usb2";
